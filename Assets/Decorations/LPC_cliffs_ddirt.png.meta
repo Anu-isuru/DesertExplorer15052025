@@ -397,7 +397,18 @@ TextureImporter:
     secondaryTextures: []
     spriteCustomMetadata:
       entries: []
-    nameFileIdTable: {}
+    nameFileIdTable:
+      LPC_cliffs_ddirt_0: -6702767674967018884
+      LPC_cliffs_ddirt_1: 222996549160086507
+      LPC_cliffs_ddirt_10: -1654352748475071521
+      LPC_cliffs_ddirt_2: 3872691761033947836
+      LPC_cliffs_ddirt_3: 8437236999380242055
+      LPC_cliffs_ddirt_4: -505875586450363454
+      LPC_cliffs_ddirt_5: 1428732806933299094
+      LPC_cliffs_ddirt_6: -6089764860618778276
+      LPC_cliffs_ddirt_7: 678931684375402075
+      LPC_cliffs_ddirt_8: -1724967765845502238
+      LPC_cliffs_ddirt_9: 192994443938552971
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

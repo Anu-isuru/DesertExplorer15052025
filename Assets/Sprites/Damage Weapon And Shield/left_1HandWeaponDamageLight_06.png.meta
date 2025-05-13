@@ -147,7 +147,8 @@ TextureImporter:
     secondaryTextures: []
     spriteCustomMetadata:
       entries: []
-    nameFileIdTable: {}
+    nameFileIdTable:
+      left_1HandWeaponDamageLight_06_0: 8317607020973308820
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

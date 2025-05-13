@@ -147,7 +147,8 @@ TextureImporter:
     secondaryTextures: []
     spriteCustomMetadata:
       entries: []
-    nameFileIdTable: {}
+    nameFileIdTable:
+      down_1HandWeaponAttack_07_0: -875996821616278503
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

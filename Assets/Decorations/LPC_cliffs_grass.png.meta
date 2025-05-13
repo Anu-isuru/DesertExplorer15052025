@@ -397,7 +397,18 @@ TextureImporter:
     secondaryTextures: []
     spriteCustomMetadata:
       entries: []
-    nameFileIdTable: {}
+    nameFileIdTable:
+      LPC_cliffs_grass_0: -4045322829074924643
+      LPC_cliffs_grass_1: 5220820664117008756
+      LPC_cliffs_grass_10: 4279324077257874506
+      LPC_cliffs_grass_2: -3642244492586450749
+      LPC_cliffs_grass_3: -1383954651462632992
+      LPC_cliffs_grass_4: 3869490646872013365
+      LPC_cliffs_grass_5: 626728755192447724
+      LPC_cliffs_grass_6: 5958391797203230473
+      LPC_cliffs_grass_7: -495756855013965662
+      LPC_cliffs_grass_8: -5161860035121582610
+      LPC_cliffs_grass_9: 1119436991845881191
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

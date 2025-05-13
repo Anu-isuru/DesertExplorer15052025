@@ -147,7 +147,8 @@ TextureImporter:
     secondaryTextures: []
     spriteCustomMetadata:
       entries: []
-    nameFileIdTable: {}
+    nameFileIdTable:
+      right_1HandWeaponIdle_01_0: -8028478451366498472
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 
