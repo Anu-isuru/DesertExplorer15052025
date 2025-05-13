@@ -12,7 +12,7 @@ public class ExplorerStateManager : MonoBehaviour
     public enum ExplorerState { Idle, Walk, Search, Danger, Dead, Success }
     public ExplorerState currentState;
 
-    public float visionRange = 3f;
+    public float visionRange = 2f;
 
     public float moveSpeed = 1f; // speed of explorer
     private Vector2 randomDirection;
@@ -32,8 +32,8 @@ public class ExplorerStateManager : MonoBehaviour
     private bool isSandstorm = false;
     private float sandstormTimer = 0f;
     [SerializeField]
-    private float timeBetweenSandstorms = 25f; // Every 25 seconds possible
-    private float sandstormDuration = 10f; // Sandstorm lasts for 10 seconds
+    private float timeBetweenSandstorms = 25f; // Every 15 seconds possible
+    private float sandstormDuration = 10f; // Sandstorm lasts for 5 seconds
 
     private float originalVisionRange; // To remember normal vision range
 
@@ -41,7 +41,7 @@ public class ExplorerStateManager : MonoBehaviour
 
     private bool isNight = false;
     private float dayNightTimer = 0f;
-    private float dayDuration = 120f; // 120 seconds for day
+    private float dayDuration = 120f; // 20 seconds for day
     private float nightDuration = 15f; // 15 seconds for night
     private Camera mainCamera; // to change background color
 
@@ -63,10 +63,9 @@ public class ExplorerStateManager : MonoBehaviour
     private float damageCooldown = 1f; // 1 second between hits
     private float lastDamageTime = -1f; // time of last hit
 
-    // 1) Memory tracking
     private HashSet<Vector2Int> visitedCells = new HashSet<Vector2Int>();
-    public float memoryBiasStrength = 5f;
-    public float cellSize = 2f;  // match your grid
+    public float memoryBiasStrength = 5f;  // higher = stronger bias
+    public float cellSize = 2f;
 
     private float fearLevel = 0f;
     public float maxFear = 100f;
@@ -89,7 +88,6 @@ public class ExplorerStateManager : MonoBehaviour
         canMove = true;
         directionTimer = changeDirectionTime;    // force an immediate direction pick
         ChooseNewDirection();
-        RecordVisit();
         animator = GetComponent<Animator>();
         currentState = ExplorerState.Walk; // Start in Idle
         originalVisionRange = visionRange;
@@ -126,12 +124,11 @@ public class ExplorerStateManager : MonoBehaviour
                 nightCanvasGroup.alpha = 0f; // fully transparent at start
             }
         }
+        randomDirection = Random.insideUnitCircle.normalized;
     }
 
     private void Update()
     {
-        if (currentState != ExplorerState.Danger)
-            UpdateFear(false);
         HandleState();
         CheckVision();
         HandleSandstorm();
@@ -139,40 +136,6 @@ public class ExplorerStateManager : MonoBehaviour
         UpdateVision();
 
     }
-    private void RecordVisit()
-    {
-        var cell = new Vector2Int(
-            Mathf.RoundToInt(transform.position.x / cellSize),
-            Mathf.RoundToInt(transform.position.y / cellSize)
-        );
-        visitedCells.Add(cell);
-    }
-
-    private void ChooseNewDirection()
-    {
-        const int samples = 8;
-        Vector2 bestDir = Vector2.zero;
-        int bestScore = int.MaxValue;
-
-        for (int i = 0; i < samples; i++)
-        {
-            Vector2 dir = Random.insideUnitCircle.normalized;
-            Vector2 targetPos = (Vector2)transform.position + dir * cellSize;
-            var cell = new Vector2Int(
-                Mathf.RoundToInt(targetPos.x / cellSize),
-                Mathf.RoundToInt(targetPos.y / cellSize)
-            );
-            int visits = visitedCells.Contains(cell) ? 1 : 0;
-            if (visits < bestScore)
-            {
-                bestScore = visits;
-                bestDir = dir;
-                if (visits == 0) break;
-            }
-        }
-        randomDirection = bestDir * (1 + memoryBiasStrength * (1 - bestScore));
-    }
-
 
     void HandleState()
     {
@@ -181,6 +144,9 @@ public class ExplorerStateManager : MonoBehaviour
             OnStateChanged?.Invoke(currentState);
             lastState = currentState;
         }
+        // If not currently in Danger state, decay fear
+        if (currentState != ExplorerState.Danger)
+            UpdateFear(false);
         switch (currentState)
         {
             case ExplorerState.Idle:
@@ -189,7 +155,7 @@ public class ExplorerStateManager : MonoBehaviour
                 break;
 
             case ExplorerState.Walk:
-                //UpdateMessage("Searching...");
+                //UpdateMessage("Walking...");
                 WalkAround();
                 break;
 
@@ -199,7 +165,7 @@ public class ExplorerStateManager : MonoBehaviour
                 break;
 
             case ExplorerState.Danger:
-                //UpdateMessage("Enemy spotted!!");
+               // UpdateMessage("Enemy spotted!!");
                 RunFromDanger();
                 break;
 
@@ -246,15 +212,16 @@ public class ExplorerStateManager : MonoBehaviour
             );
             if (Vector2.Distance(transform.position, waterSource.position) < 0.1f)
                 canMove = false;
-                //UpdateMessage("Water Found, You’ve reached the oasis!");
+                UpdateMessage("You've found the water. You’ve reached the oasis!");
         }
     }
 
-   // void UpdateMessage(string msg)
-   // {
-   //     if (messageText != null)
-    //        messageText.text = msg;
-   // }
+
+    void UpdateMessage(string msg)
+    {
+        if (messageText != null)
+            messageText.text = msg;
+    }
 
 
     private void OnDrawGizmosSelected()
@@ -285,14 +252,19 @@ public class ExplorerStateManager : MonoBehaviour
         // 2) Move
         transform.Translate(dir * speed * Time.deltaTime, Space.World);
 
-        // 3) Clamp to map bounds
+       // 3) Clamp to map bounds
         Vector3 p = transform.position;
         p.x = Mathf.Clamp(p.x, minX, maxX);
         p.y = Mathf.Clamp(p.y, minY, maxY);
         transform.position = p;
 
-        // 4) Drive the Animator
         UpdateAnimator(dir, speed);
+    }
+    private void UpdateAnimator(Vector2 dir, float speed)
+    {
+        animator.SetFloat("MoveX", dir.x);
+        animator.SetFloat("MoveY", dir.y);
+        animator.SetFloat("Speed", speed);
     }
     void CheckVision()
     {
@@ -309,7 +281,6 @@ public class ExplorerStateManager : MonoBehaviour
             {
                 currentState = ExplorerState.Danger;
                 dangerSource = hit.transform; // Save the enemy transform
-                UpdateFear(true);
             }
         }
     }
@@ -363,8 +334,8 @@ public class ExplorerStateManager : MonoBehaviour
             sandstormTimer = 0f;
             visionRange = originalVisionRange * 0.5f; // Reduce vision by half
            
-          //  if (messageText != null)
-          //      messageText.text = "Sandstorm! Vision reduced!";
+           // if (messageText != null)
+             //   messageText.text = "Sandstorm! Vision reduced!";
 
             if (sandstormOverlay != null)
                 StartCoroutine(FadeCanvas(sandstormCanvasGroup, 1f, 1f));
@@ -381,8 +352,8 @@ public class ExplorerStateManager : MonoBehaviour
             sandstormTimer = 0f;
             visionRange = originalVisionRange;
 
-          //  if (messageText != null)
-          //      messageText.text = "Searching...";
+            if (messageText != null)
+                messageText.text = "Searching...";
 
             if (sandstormOverlay != null)
                 StartCoroutine(FadeCanvas(sandstormCanvasGroup, 0f, 1f));
@@ -401,8 +372,8 @@ public class ExplorerStateManager : MonoBehaviour
         if (sunImage != null) sunImage.SetActive(true);
         if (moonImage != null) moonImage.SetActive(false);
                 
-       // if (messageText != null)
-         //   messageText.text = "Daytime";
+        //if (messageText != null)
+          //  messageText.text = "Daytime: Searching...";
 
         if (nightCanvasGroup != null)
             StartCoroutine(FadeCanvas(nightCanvasGroup, 0f, 1f)); // fade out
@@ -418,12 +389,11 @@ public class ExplorerStateManager : MonoBehaviour
         if (sunImage!= null) sunImage.SetActive(false);
         if (moonImage != null) moonImage.SetActive (true);
 
-      //  if (messageText != null)
-      //      messageText.text = "Nighttime: Harder to see!";
+        //if (messageText != null)
+          //  messageText.text = "Nighttime: Harder to see!";
 
         if (nightCanvasGroup != null)
-            StartCoroutine(FadeCanvas(nightCanvasGroup, 1f, 1f)); // fade in
-        // Damage on nightfall
+            StartCoroutine(FadeCanvas(nightCanvasGroup, 1f, 1f));
         TakeDamage(3);
     }
 
@@ -502,7 +472,38 @@ public class ExplorerStateManager : MonoBehaviour
 
         canvas.alpha = targetAlpha;
     }
+    private void RecordVisit()
+    {
+        var cell = new Vector2Int(
+            Mathf.RoundToInt(transform.position.x / cellSize),
+            Mathf.RoundToInt(transform.position.y / cellSize)
+        );
+        visitedCells.Add(cell);
+    }
+    private void ChooseNewDirection()
+    {
+        const int samples = 8;
+        Vector2 bestDir = Vector2.zero;
+        int bestScore = int.MaxValue;
 
+        for (int i = 0; i < samples; i++)
+        {
+            Vector2 dir = Random.insideUnitCircle.normalized;
+            Vector2 targetPos = (Vector2)transform.position + dir * cellSize;
+            var cell = new Vector2Int(
+                Mathf.RoundToInt(targetPos.x / cellSize),
+                Mathf.RoundToInt(targetPos.y / cellSize)
+            );
+            int visits = visitedCells.Contains(cell) ? 1 : 0;
+            if (visits < bestScore)
+            {
+                bestScore = visits;
+                bestDir = dir;
+                if (visits == 0) break;
+            }
+        }
+        randomDirection = bestDir * (1 + memoryBiasStrength * (1 - bestScore));
+    }
     private void UpdateFear(bool inDanger)
     {
         if (inDanger)
@@ -510,22 +511,15 @@ public class ExplorerStateManager : MonoBehaviour
         else
             fearLevel = Mathf.Max(0, fearLevel - fearDecayRate * Time.deltaTime);
     }
-
     private float CurrentSpeed()
     {
+        // compute a fear‐based multiplier:
         float fearMultiplier = (currentState == ExplorerState.Danger)
-            ? (1f + fearLevel / maxFear)
-            : (1f - 0.5f * fearLevel / maxFear);
+            ? (1f + fearLevel / maxFear)        // speed up when fleeing
+            : (1f - 0.5f * fearLevel / maxFear); // slow down when not in danger
 
-        float slowed = 0.8f;    // 80% of normal
-        return moveSpeed * fearMultiplier * slowed;
-    }
-    private void UpdateAnimator(Vector2 direction, float speed)
-    {
-        if (animator == null) return;
-        animator.SetFloat("MoveX", direction.x);
-        animator.SetFloat("MoveY", direction.y);
-        animator.SetFloat("Speed", speed);
+        // apply it to your base moveSpeed
+        return moveSpeed * fearMultiplier;
     }
     void OnDrawGizmos()
     {
@@ -536,4 +530,5 @@ public class ExplorerStateManager : MonoBehaviour
             Gizmos.DrawWireCube(world, Vector3.one * cellSize * 0.9f);
         }
     }
+
 }

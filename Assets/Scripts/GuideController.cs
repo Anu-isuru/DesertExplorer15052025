@@ -14,10 +14,9 @@ public class GuideController : MonoBehaviour
     {
         string msg = state switch
         {
-            ExplorerStateManager.ExplorerState.Walk => "Searching for water",
             ExplorerStateManager.ExplorerState.Danger => "Watch out! An enemy is nearby.",
-            ExplorerStateManager.ExplorerState.Search => "Searching for water",
-            ExplorerStateManager.ExplorerState.Success => "Water found.. You’ve came to the oasis!",
+            ExplorerStateManager.ExplorerState.Search => "Keep searching for water.",
+            ExplorerStateManager.ExplorerState.Success => "You’ve found the oasis!",
             ExplorerStateManager.ExplorerState.Idle => "Standing by…",
             _ => null
         };

@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 [RequireComponent(typeof(CompositeCollider2D))]
 public class MapBoundsProvider : MonoBehaviour
@@ -7,9 +7,12 @@ public class MapBoundsProvider : MonoBehaviour
 
     void Awake()
     {
+        // Get the CompositeCollider2D attached to this GameObject
         var comp = GetComponent<CompositeCollider2D>();
+        // Read its world‐space bounds
         var b = comp.bounds;
 
+        // b.min and b.max are Vector3s with the corners of the box
         minX = b.min.x;
         minY = b.min.y;
         maxX = b.max.x;
