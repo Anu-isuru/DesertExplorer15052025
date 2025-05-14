@@ -3,6 +3,7 @@ using TMPro;
 using UnityEngine.SceneManagement;
 using System.Collections;
 using System.Collections.Generic;
+using UnityEngine.UI;
 
 
 
@@ -14,9 +15,9 @@ public class ExplorerStateManager : MonoBehaviour
 
     public float visionRange = 2f;
 
-    public float moveSpeed = 1f; // speed of explorer
+    public float moveSpeed = 1.5f; // speed of explorer
     private Vector2 randomDirection;
-    private float changeDirectionTime = 2f; // how often to pick new random direction
+    private float changeDirectionTime = 5f; // how often to pick new random direction
     private float directionTimer;
 
     private bool canMove = false;
@@ -83,6 +84,9 @@ public class ExplorerStateManager : MonoBehaviour
     public float minY;
     public float maxY;
 
+    public Slider fearSlider;              // drag FearSlider here
+    public TextMeshProUGUI fearText;       // optional: drag FearText here
+
     private void Start()
     {
         canMove = true;
@@ -141,12 +145,12 @@ public class ExplorerStateManager : MonoBehaviour
     {
         if (currentState != lastState)
         {
+            UpdateMessage(currentState.ToString());
             OnStateChanged?.Invoke(currentState);
             lastState = currentState;
         }
-        // If not currently in Danger state, decay fear
-        if (currentState != ExplorerState.Danger)
-            UpdateFear(false);
+        UpdateFear(currentState == ExplorerState.Danger);
+
         switch (currentState)
         {
             case ExplorerState.Idle:
@@ -155,17 +159,17 @@ public class ExplorerStateManager : MonoBehaviour
                 break;
 
             case ExplorerState.Walk:
-                //UpdateMessage("Walking...");
+                UpdateMessage("Searching...");
                 WalkAround();
                 break;
 
             case ExplorerState.Search:
-                //UpdateMessage("Searching...");
+                UpdateMessage("Searching...");
                 SearchForWater();
                 break;
 
             case ExplorerState.Danger:
-               // UpdateMessage("Enemy spotted!!");
+                UpdateMessage("Enemy spotted!!");
                 RunFromDanger();
                 break;
 
@@ -252,12 +256,6 @@ public class ExplorerStateManager : MonoBehaviour
         // 2) Move
         transform.Translate(dir * speed * Time.deltaTime, Space.World);
 
-       // 3) Clamp to map bounds
-        Vector3 p = transform.position;
-        p.x = Mathf.Clamp(p.x, minX, maxX);
-        p.y = Mathf.Clamp(p.y, minY, maxY);
-        transform.position = p;
-
         UpdateAnimator(dir, speed);
     }
     private void UpdateAnimator(Vector2 dir, float speed)
@@ -287,6 +285,7 @@ public class ExplorerStateManager : MonoBehaviour
     void RunFromDanger()
     {
         RecordVisit();
+        UpdateFear(true);
         if (dangerSource == null)
         {
             currentState = ExplorerState.Walk;
@@ -418,9 +417,13 @@ public class ExplorerStateManager : MonoBehaviour
     void UpdateHealthUI()
     {
         if (healthText != null)
-        {
             healthText.text = "Health: " + currentHealth;
-        }
+
+        if (fearSlider != null)
+            fearSlider.value = fearLevel / maxFear;
+
+        if (fearText != null)
+            fearText.text = "Fear: " + Mathf.RoundToInt(fearLevel);
     }
 
     void TakeDamage(int damageAmount)
@@ -510,6 +513,7 @@ public class ExplorerStateManager : MonoBehaviour
             fearLevel = Mathf.Min(maxFear, fearLevel + fearIncreaseRate * Time.deltaTime);
         else
             fearLevel = Mathf.Max(0, fearLevel - fearDecayRate * Time.deltaTime);
+        UpdateHealthUI();
     }
     private float CurrentSpeed()
     {
@@ -530,5 +534,11 @@ public class ExplorerStateManager : MonoBehaviour
             Gizmos.DrawWireCube(world, Vector3.one * cellSize * 0.9f);
         }
     }
-
+    private void LateUpdate()
+    {
+        var p = transform.position;
+        p.x = Mathf.Clamp(p.x, minX, maxX);
+        p.y = Mathf.Clamp(p.y, minY, maxY);
+        transform.position = p;
+    }
 }
