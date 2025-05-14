@@ -8,7 +8,7 @@ using UnityEngine.UI;
 
 
 
-public class ExplorerStateManager : MonoBehaviour
+public class ExplorerStateManager : MonoBehaviour, ICommunicator
 {
     public enum ExplorerState { Idle, Walk, Search, Danger, Dead, Success }
     public ExplorerState currentState;
@@ -17,7 +17,7 @@ public class ExplorerStateManager : MonoBehaviour
 
     public float moveSpeed = 1.5f; // speed of explorer
     private Vector2 randomDirection;
-    private float changeDirectionTime = 5f; // how often to pick new random direction
+    private float changeDirectionTime = 3f; // how often to pick new random direction
     private float directionTimer;
 
     private bool canMove = false;
@@ -33,18 +33,18 @@ public class ExplorerStateManager : MonoBehaviour
     private bool isSandstorm = false;
     private float sandstormTimer = 0f;
     [SerializeField]
-    private float timeBetweenSandstorms = 25f; // Every 15 seconds possible
-    private float sandstormDuration = 10f; // Sandstorm lasts for 5 seconds
+    private float timeBetweenSandstorms = 25f; 
+    private float sandstormDuration = 10f; 
 
-    private float originalVisionRange; // To remember normal vision range
+    private float originalVisionRange; 
 
     public GameObject sandstormOverlay;
 
     private bool isNight = false;
     private float dayNightTimer = 0f;
-    private float dayDuration = 120f; // 20 seconds for day
-    private float nightDuration = 15f; // 15 seconds for night
-    private Camera mainCamera; // to change background color
+    private float dayDuration = 120f; 
+    private float nightDuration = 15f; 
+    private Camera mainCamera; 
 
     public GameObject sunImage;
     public GameObject moonImage;
@@ -61,11 +61,11 @@ public class ExplorerStateManager : MonoBehaviour
     public GameObject nightOverlay;
     private CanvasGroup nightCanvasGroup;
 
-    private float damageCooldown = 1f; // 1 second between hits
-    private float lastDamageTime = -1f; // time of last hit
+    private float damageCooldown = 1f; 
+    private float lastDamageTime = -1f; 
 
     private HashSet<Vector2Int> visitedCells = new HashSet<Vector2Int>();
-    public float memoryBiasStrength = 5f;  // higher = stronger bias
+    public float memoryBiasStrength = 5f;  
     public float cellSize = 2f;
 
     private float fearLevel = 0f;
@@ -84,24 +84,27 @@ public class ExplorerStateManager : MonoBehaviour
     public float minY;
     public float maxY;
 
-    public Slider fearSlider;              // drag FearSlider here
-    public TextMeshProUGUI fearText;       // optional: drag FearText here
+    public Slider fearSlider;              
+    public TextMeshProUGUI fearText;       
+
+    [HideInInspector] public Vector2 seekTarget;
+    [HideInInspector] public bool hasSeekTarget = false;
 
     private void Start()
     {
         canMove = true;
-        directionTimer = changeDirectionTime;    // force an immediate direction pick
+        directionTimer = changeDirectionTime;    
         ChooseNewDirection();
         animator = GetComponent<Animator>();
-        currentState = ExplorerState.Walk; // Start in Idle
+        currentState = ExplorerState.Walk; 
         originalVisionRange = visionRange;
 
         if (sandstormOverlay != null)
         {
             sandstormCanvasGroup = sandstormOverlay.GetComponent<CanvasGroup>();
-            sandstormOverlay.SetActive(true); // Ensure it's active
+            sandstormOverlay.SetActive(true); 
             if (sandstormCanvasGroup != null)
-                sandstormCanvasGroup.alpha = 0f; // Fully transparent initially
+                sandstormCanvasGroup.alpha = 0f; 
         }
 
         if (sandstormParticles != null)
@@ -122,10 +125,10 @@ public class ExplorerStateManager : MonoBehaviour
         if (nightOverlay != null)
         {
             nightCanvasGroup = nightOverlay.GetComponent<CanvasGroup>();
-            nightOverlay.SetActive(true); // make sure it's active
+            nightOverlay.SetActive(true); 
             if (nightCanvasGroup != null)
             {
-                nightCanvasGroup.alpha = 0f; // fully transparent at start
+                nightCanvasGroup.alpha = 0f; 
             }
         }
         randomDirection = Random.insideUnitCircle.normalized;
@@ -154,7 +157,6 @@ public class ExplorerStateManager : MonoBehaviour
         switch (currentState)
         {
             case ExplorerState.Idle:
-                //UpdateMessage("Idle");
                 animator.SetFloat("Speed", 0f);
                 break;
 
@@ -178,7 +180,6 @@ public class ExplorerStateManager : MonoBehaviour
                 break;
 
             case ExplorerState.Success:
-                //UpdateMessage("Water Found");
                 Celebrate();
                 break;
         }
@@ -191,8 +192,32 @@ public class ExplorerStateManager : MonoBehaviour
 
     void SearchForWater()
     {
-        RandomMovement(); // Same random movement
+        Debug.Log($"[Search] hasSeekTarget={hasSeekTarget}, target={seekTarget}");
+        if (!hasSeekTarget)
+        {
+            RandomMovement();
+            return;
+        }
+
+        // 1) Compute direction & move
+        Vector2 pos = transform.position;
+        Vector2 dir = (seekTarget - pos).normalized;
+        float speed = CurrentSpeed();
+        Vector2 newPos = Vector2.MoveTowards(pos, seekTarget, speed * Time.deltaTime);
+
+        Debug.Log($"[Explorer] Moving from {pos} → {seekTarget} (now at {newPos})");
+
+        transform.position = newPos;
+        UpdateAnimator(dir, speed);
+
+        // 2) Check arrival
+        if (Vector2.Distance(newPos, seekTarget) < 0.1f)
+        {
+            currentState = ExplorerState.Success;
+            hasSeekTarget = false;
+        }
     }
+
 
     void Die()
     {
@@ -288,7 +313,10 @@ public class ExplorerStateManager : MonoBehaviour
         UpdateFear(true);
         if (dangerSource == null)
         {
-            currentState = ExplorerState.Walk;
+            // if he still know where the water is, go back into Search
+            currentState = hasSeekTarget
+                           ? ExplorerState.Search
+                           : ExplorerState.Walk;
             return;
         }
 
@@ -316,7 +344,7 @@ public class ExplorerStateManager : MonoBehaviour
         // take damage while close to the enemy
         if (Time.time - lastDamageTime >= damageCooldown)
         {
-            TakeDamage(1);
+            TakeDamage(10);
             lastDamageTime = Time.time;
         }
     }
@@ -333,11 +361,8 @@ public class ExplorerStateManager : MonoBehaviour
             sandstormTimer = 0f;
             visionRange = originalVisionRange * 0.5f; // Reduce vision by half
            
-           // if (messageText != null)
-             //   messageText.text = "Sandstorm! Vision reduced!";
-
             if (sandstormOverlay != null)
-                StartCoroutine(FadeCanvas(sandstormCanvasGroup, 1f, 1f));
+            StartCoroutine(FadeCanvas(sandstormCanvasGroup, 1f, 1f));
 
             if (sandstormParticles != null)
                 sandstormParticles.SetActive(true);
@@ -371,9 +396,6 @@ public class ExplorerStateManager : MonoBehaviour
         if (sunImage != null) sunImage.SetActive(true);
         if (moonImage != null) moonImage.SetActive(false);
                 
-        //if (messageText != null)
-          //  messageText.text = "Daytime: Searching...";
-
         if (nightCanvasGroup != null)
             StartCoroutine(FadeCanvas(nightCanvasGroup, 0f, 1f)); // fade out
     }
@@ -387,9 +409,6 @@ public class ExplorerStateManager : MonoBehaviour
         
         if (sunImage!= null) sunImage.SetActive(false);
         if (moonImage != null) moonImage.SetActive (true);
-
-        //if (messageText != null)
-          //  messageText.text = "Nighttime: Harder to see!";
 
         if (nightCanvasGroup != null)
             StartCoroutine(FadeCanvas(nightCanvasGroup, 1f, 1f));
@@ -541,4 +560,19 @@ public class ExplorerStateManager : MonoBehaviour
         p.y = Mathf.Clamp(p.y, minY, maxY);
         transform.position = p;
     }
+    public void ReceiveMessage(string message, Transform from)
+    {
+        if (message.StartsWith("Water at"))
+        {
+            Debug.Log($"[Explorer] Received “{message}” from {from.name}");
+            // parse "Water at x,y"
+            var coords = message.Substring(9).Split(',');
+            float x = float.Parse(coords[0]);
+            float y = float.Parse(coords[1]);
+            seekTarget = new Vector2(x, y);
+            hasSeekTarget = true;
+            currentState = ExplorerState.Search;
+        }
+    }
+
 }
