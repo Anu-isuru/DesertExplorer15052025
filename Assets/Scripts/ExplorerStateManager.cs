@@ -344,7 +344,7 @@ public class ExplorerStateManager : MonoBehaviour, ICommunicator
         // take damage while close to the enemy
         if (Time.time - lastDamageTime >= damageCooldown)
         {
-            TakeDamage(10);
+            TakeDamage(1);
             lastDamageTime = Time.time;
         }
     }
